@@ -1,3 +1,8 @@
+/**
+ * The function calculates median value for an array of numeric values
+ * @param {Array} values - input array
+ * @returns {number}
+ */
 function median(values){
   if(values.length === 0) {
     return 0;

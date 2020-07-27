@@ -1,5 +1,9 @@
 const mongoose = require('mongoose');
 
+/**
+ * The schema reflects document model of data entity
+ * for persistence of Google Analytics daily visitor statistics
+ */
 const Schema = new mongoose.Schema({
   date: {
     type: Date,
