@@ -5,7 +5,7 @@ class Scheduler {
     this.job = new CronJob(
       cron,
       job.run,
-      () => console.log('Sync Job has completed.')
+      () => console.log('Job has completed.')
     );
   }
 

@@ -1,44 +1,69 @@
+const mongoose = require('mongoose');
+const moment = require('moment');
+const VisitorStats = mongoose.model('VisitorStats');
 const {median} = require('../math');
 
 class SyncJob {
-  constructor(visitorStats, uniqueVisitors) {
+  constructor(uniqueVisitors) {
     this.uniqueVisitors = uniqueVisitors;
   }
 
   async run() {
-    const count = await this.uniqueVisitors.count('yesterday', 'today');
-    const today = new Date();
-    today.setHours(0,0,0,0); // midnight
+    const today = moment().startOf('day').toDate();
 
-    const oneDay = 24 * 60 * 60 * 100; // milliseconds
-    const week = 7 * oneDay;
-
-    let todayStats = await visitorStats.findOne({date: today});
+    let todayStats = await VisitorStats.findOne({date: today});
+    let count;
     if (todayStats === null) {
+      count = await this.uniqueVisitors.count('yesterday', 'today');
+
       const data = {
         date: today,
         todayCount: count
       };
 
-      const yesterday = new Date(today.getDate() - oneDay);
-      const yesterdayStats = await visitorStats.findOne({date: yesterday});
-      if (yesterdayStats) {
-        const increase = (count - yesterdayStats.count) / yesterdayStats.count * 100;
+      const weekCounts = await this._getWeekCounts();
+      if (weekCounts.length > 1) {
+        const yesterdayCount = weekCounts[weekCounts.length - 1];
+        const increase = (count - yesterdayCount) / yesterdayCount * 100;
         data.increaseSinceYesterday = Math.round(increase);
-
-        const weekAgo = new Date(today.getDate() - week);
-        const weekStats = await visitorStats.find({
-          date: {
-            $gt: weekAgo,
-            $lte: today
-          }
-        });
-        data.weekMedian = median(weekStats.map(s => s.count));
+        data.weekMedian = median(weekCounts);
       }
 
-      await visitorStats.create(data);
+      await VisitorStats.create(data);
+    } else {
+      count = todayStats.todayCount;
     }
+    console.log(`Unique visitors for today: ${count}`);
+  }
+
+  async _getByDate(date) {
+    const today = moment(date).startOf('day').format('YYYY-MM-DD');
+    const yesterday = moment(date).subtract(1, 'day').startOf('day').format('YYYY-MM-DD');
+    return await this.uniqueVisitors.count(yesterday, today);
+  }
+
+  async _getWeekCounts() {
+    const weekAgo = moment().subtract(6, 'day').startOf('day').toDate();
+    const existingStats = await VisitorStats.find({
+      date: {$gt: weekAgo}
+    });
+
+    const dayCounts = [];
+    const dateStats = new Map(existingStats.map(vs => [moment(vs.date).startOf('day').format('YYYY-MM-DD'), vs]));
+    for (let i = 0; i < 7; i++) {
+      const date = moment(weekAgo).add(i, 'day').startOf('day').format('YYYY-MM-DD');
+
+      const existing = dateStats.get(date);
+      if (!existing) {
+        const count = await this._getByDate(date);
+        dayCounts.push(count);
+      } else {
+        dayCounts.push(existing.todayCount);
+      }
+    }
+
+    return dayCounts;
   }
 }
 
-exports.SyncJob = SyncJob;
+module.exports = SyncJob;

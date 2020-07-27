@@ -8,12 +8,11 @@ class UniqueVisitors {
     const res = await google.analytics('v3').data.ga.get({
       'start-date': startDate,
       'end-date': endDate,
-      ids: 'ga:98877168',
-      metrics: 'ga:sessions',
+      ids: process.env.GOOGLE_ANALYTICS_ID,
+      metrics: 'ga:visitors'
     });
 
-    console.log(res.data);
-    return res.data;
+    return parseInt(res.data.rows[0][0]);
   }
 }
 

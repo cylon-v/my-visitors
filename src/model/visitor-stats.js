@@ -7,7 +7,7 @@ const Schema = new mongoose.Schema({
     unique: true
   },
 
-  count: {
+  todayCount: {
     type: Number
   },
 
@@ -16,7 +16,7 @@ const Schema = new mongoose.Schema({
   },
 
   weekMedian: {
-    type: number
+    type: Number
   }
 });
 
